@@ -73,6 +73,12 @@
         let directionsRenderers = [];
         let landmarkMarkers = [];
 
+        // Custom icon for origin marker
+        const originIcon = {
+            url: "https://upload.wikimedia.org/wikipedia/commons/9/99/Circle-icons-bike.svg", // Replace with your custom icon URL
+            scaledSize: new google.maps.Size(40, 40) // Scale the icon size (adjust as needed)
+        };
+
         // Initialize the map
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
@@ -98,6 +104,7 @@
                     position: origin,
                     map: map,
                     title: "Manually Set Location",
+                    icon: originIcon // Use the custom icon for origin
                 });
                 document.getElementById("generate-btn").disabled = false;
                 document.getElementById("regenerate-btn").disabled = false;
@@ -120,6 +127,7 @@
                             position: origin,
                             map: map,
                             title: "Current Location",
+                            icon: originIcon // Use the custom icon for origin
                         });
                         map.setCenter(origin);
                         document.getElementById("generate-btn").disabled = false;
