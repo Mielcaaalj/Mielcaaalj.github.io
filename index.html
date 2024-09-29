@@ -1,82 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-time GPS Tracker</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCqm58SgYCVN-CdOxefv0BPG_PTJ75yINM"></script>
+    <title>Real-time Walking Tracker</title>
+    <!-- Include Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCqm58SgYCVN-CdOxefv0BPG_PTJ75yINM&libraries=places"></script>
+    
     <style>
-      /* Map container style */
-      #map {
-        height: 100vh;  /* Full screen height */
-        width: 100%;    /* Full width */
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Map container -->
-    <div id="map"></div>
-
-    <!-- JavaScript to initialize and control the map -->
-    <script>
-      let map, marker;
-
-      // Function to initialize the map
-      function initMap() {
-        // Set default location (Manila, Philippines)
-        const defaultLocation = { lat: 14.5995, lng: 120.9842 };
-
-        // Initialize the map centered at defaultLocation
-        map = new google.maps.Map(document.getElementById("map"), {
-          center: defaultLocation,
-          zoom: 14,
-        });
-
-        // Create a marker at defaultLocation
-        marker = new google.maps.Marker({
-          position: defaultLocation,
-          map: map,
-        });
-
-        // Get the user's current location and track their movements
-        if (navigator.geolocation) {
-          navigator.geolocation.watchPosition(
-            (position) => {
-              // Update position to user's current location
-              const pos = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-              };
-
-              // Set the map and marker positions to user's current position
-              map.setCenter(pos);
-              marker.setPosition(pos);
-            },
-            () => {
-              // Handle errors if geolocation fails
-              handleLocationError(true, map.getCenter());
-            }
-          );
-        } else {
-          // Handle errors if geolocation is not supported
-          handleLocationError(false, map.getCenter());
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
         }
-      }
+        #map {
+            height: 400px;
+            width: 100%;
+        }
+        #status {
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
 
-      // Function to handle geolocation errors
-      function handleLocationError(browserHasGeolocation, pos) {
-        const infoWindow = new google.maps.InfoWindow();
-        infoWindow.setPosition(pos);
-        infoWindow.setContent(
-          browserHasGeolocation
-            ? "Error: The Geolocation service failed."
-            : "Error: Your browser doesn't support geolocation."
-        );
-        infoWindow.open(map);
-      }
+<h1>Real-time Walking Tracker</h1>
+<p id="status">Tracking your location...</p>
 
-      // Initialize the map when the window loads
-      window.onload = initMap;
-    </script>
-  </body>
+<!-- This div will show the map when location tracking is enabled -->
+<div id="map"></div>
+
+<script>
+// JavaScript for automatic location tracking
+let map, marker;
+
+function enableLocationTracking() {
+    if (navigator.geolocation) {
+        // Start watching the user's location
+        navigator.geolocation.watchPosition(updatePosition, showError, {
+            enableHighAccuracy: true,  // Use GPS if available
+            maximumAge: 0,             // Do not use cached position
+            timeout: 10000             // Set a timeout to wait for location
+        });
+    } else {
+        document.getElementById('status').innerText = 'Geolocation is not supported by this browser.';
+    }
+}
+
+function updatePosition(position) {
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    const location = { lat: lat, lng: lng };
+
+    // Display the map
+    document.getElementById('map').style.display = 'block';
+
+    // Initialize the map if it doesn't exist
+    if (!map) {
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 18,
+            center: location
+        });
+    } else {
+        map.setCenter(location); // Recenter the map to the current position
+    }
+
+    // Add or update the marker at the user's location
+    if (marker) {
+        marker.setPosition(location); // Update marker position
+    } else {
+        marker = new google.maps.Marker({
+            position: location,
+            map: map,
+            icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 8, // Marker size
+                fillColor: '#4285F4', // Blue color
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: 'white'
+            }
+        });
+    }
+}
+
+function showError(error) {
+    switch (error.code) {
+        case error.PERMISSION_DENIED:
+            document.getElementById('status').innerText = 'User denied the request for Geolocation.';
+            break;
+        case error.POSITION_UNAVAILABLE:
+            document.getElementById('status').innerText = 'Location information is unavailable.';
+            break;
+        case error.TIMEOUT:
+            document.getElementById('status').innerText = 'The request to get user location timed out.';
+            break;
+        case error.UNKNOWN_ERROR:
+            document.getElementById('status').innerText = 'An unknown error occurred.';
+            break;
+    }
+}
+
+// Start location tracking as soon as the page loads
+window.onload = enableLocationTracking;
+</script>
+
+</body>
 </html>
