@@ -71,6 +71,7 @@
         let placesService;
         let directionsService;
         let directionsRenderers = [];
+        let landmarkMarkers = [];
 
         // Initialize the map
         function initMap() {
@@ -133,10 +134,15 @@
             }
         }
 
-        // Function to clear previous routes
-        function clearRoutes() {
+        // Function to clear previous routes and markers
+        function clearRoutesAndMarkers() {
+            // Clear routes
             directionsRenderers.forEach((renderer) => renderer.setMap(null));
             directionsRenderers = [];
+
+            // Clear markers
+            landmarkMarkers.forEach((marker) => marker.setMap(null));
+            landmarkMarkers = [];
         }
 
         // Function to find nearby landmarks and generate routes
@@ -146,7 +152,7 @@
                 return;
             }
 
-            clearRoutes(); // Clear any existing routes
+            clearRoutesAndMarkers(); // Clear any existing routes and markers
 
             // Use Google Places API to find landmarks nearby
             const request = {
@@ -208,11 +214,12 @@
                     directionsRenderers.push(directionsRenderer);
 
                     // Add a marker for the destination
-                    new google.maps.Marker({
+                    const landmarkMarker = new google.maps.Marker({
                         position: destination,
                         map: map,
                         title: landmark.name,
                     });
+                    landmarkMarkers.push(landmarkMarker);
                 } else if (status === google.maps.DirectionsStatus.ZERO_RESULTS) {
                     // If bicycling mode fails, fall back to driving mode
                     request.travelMode = google.maps.TravelMode.DRIVING;
@@ -231,11 +238,12 @@
                             directionsRenderers.push(directionsRenderer);
 
                             // Add a marker for the destination
-                            new google.maps.Marker({
+                            const landmarkMarker = new google.maps.Marker({
                                 position: destination,
                                 map: map,
                                 title: landmark.name,
                             });
+                            landmarkMarkers.push(landmarkMarker);
                         } else {
                             console.error("Directions request failed: " + status);
                         }
