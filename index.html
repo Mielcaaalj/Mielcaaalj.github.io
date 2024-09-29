@@ -72,6 +72,7 @@
         let directionsService;
         let directionsRenderers = [];
         let landmarkMarkers = [];
+        let originMarker = null; // Keep track of the origin marker
 
         // Custom icon for origin marker
         const originIcon = {
@@ -90,17 +91,58 @@
             directionsService = new google.maps.DirectionsService();
         }
 
+        // Function to update the origin marker position
+        function updateOriginMarker(position) {
+            const newOrigin = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+            };
+
+            // Set the origin for the first time
+            if (!origin) {
+                origin = newOrigin;
+            }
+
+            if (originMarker) {
+                originMarker.setPosition(newOrigin); // Update existing marker position
+            } else {
+                originMarker = new google.maps.Marker({
+                    position: newOrigin,
+                    map: map,
+                    title: "Current Location",
+                    icon: originIcon // Use the custom icon for origin
+                });
+            }
+            map.setCenter(newOrigin); // Center the map on the new origin
+        }
+
+        // Function to start tracking the user's location
+        function startTrackingLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        updateOriginMarker(position);
+                    },
+                    () => {
+                        alert("Geolocation failed. Please set your location manually.");
+                    }
+                );
+            } else {
+                alert("Geolocation is not supported by this browser. Please set your location manually.");
+            }
+        }
+
         // Set user's location manually using a click on the map
         function setLocationManually() {
             map.addListener("click", (event) => {
-                if (origin) {
-                    origin.setMap(null); // Remove the previous origin marker
+                if (originMarker) {
+                    originMarker.setMap(null); // Remove the previous origin marker
                 }
                 origin = {
                     lat: event.latLng.lat(),
                     lng: event.latLng.lng(),
                 };
-                new google.maps.Marker({
+                originMarker = new google.maps.Marker({
                     position: origin,
                     map: map,
                     title: "Manually Set Location",
@@ -111,25 +153,13 @@
             });
         }
 
-        // Use user's current location to set origin
+        // Use user's current location to set origin and start tracking
         function getCurrentLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        if (origin) {
-                            origin.setMap(null); // Remove the previous origin marker
-                        }
-                        origin = {
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude,
-                        };
-                        new google.maps.Marker({
-                            position: origin,
-                            map: map,
-                            title: "Current Location",
-                            icon: originIcon // Use the custom icon for origin
-                        });
-                        map.setCenter(origin);
+                        updateOriginMarker(position);
+                        startTrackingLocation(); // Start tracking location
                         document.getElementById("generate-btn").disabled = false;
                         document.getElementById("regenerate-btn").disabled = false;
                     },
@@ -192,9 +222,9 @@
             );
 
             let color;
-            if (distance <= 5000) {
+            if (distance <= 3000) {
                 color = "green"; // Green for short distances (<= 5 km)
-            } else if (distance <= 10000) {
+            } else if (distance <= 6000) {
                 color = "orange"; // Orange for medium distances (5 - 10 km)
             } else {
                 color = "red"; // Red for long distances (> 10 km)
