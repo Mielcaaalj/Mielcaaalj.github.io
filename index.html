@@ -49,6 +49,11 @@
         button:hover {
             background-color: #02890e;
         }
+        #distance-traveled {
+            margin: 10px 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -59,6 +64,7 @@
         <button id="get-current-location-btn">Use My Current Location</button>
         <button id="generate-btn" disabled>Generate Routes to Landmarks</button>
         <button id="regenerate-btn" disabled>Regenerate Routes</button>
+        <div id="distance-traveled">Distance Traveled: 0 km</div>
     </div>
 
     <div id="map-container">
@@ -72,7 +78,8 @@
         let directionsService;
         let directionsRenderers = [];
         let landmarkMarkers = [];
-        let originMarker = null; // Keep track of the origin marker
+        let originMarker = null;
+        let totalDistance = 0;
 
         // Custom icon for origin marker
         const originIcon = {
@@ -98,22 +105,29 @@
                 lng: position.coords.longitude,
             };
 
-            // Set the origin for the first time
-            if (!origin) {
-                origin = newOrigin;
+            if (origin) {
+                // Calculate distance from previous origin to new origin
+                const distance = google.maps.geometry.spherical.computeDistanceBetween(
+                    new google.maps.LatLng(origin.lat, origin.lng),
+                    new google.maps.LatLng(newOrigin.lat, newOrigin.lng)
+                );
+                totalDistance += distance / 1000; // Convert meters to kilometers
+                document.getElementById("distance-traveled").innerText = `Distance Traveled: ${totalDistance.toFixed(2)} km`;
             }
 
+            origin = newOrigin;
+
             if (originMarker) {
-                originMarker.setPosition(newOrigin); // Update existing marker position
+                originMarker.setPosition(newOrigin);
             } else {
                 originMarker = new google.maps.Marker({
                     position: newOrigin,
                     map: map,
                     title: "Current Location",
-                    icon: originIcon // Use the custom icon for origin
+                    icon: originIcon
                 });
             }
-            map.setCenter(newOrigin); // Center the map on the new origin
+            map.setCenter(newOrigin);
         }
 
         // Function to start tracking the user's location
@@ -146,7 +160,7 @@
                     position: origin,
                     map: map,
                     title: "Manually Set Location",
-                    icon: originIcon // Use the custom icon for origin
+                    icon: originIcon
                 });
                 document.getElementById("generate-btn").disabled = false;
                 document.getElementById("regenerate-btn").disabled = false;
