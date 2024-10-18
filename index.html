@@ -214,6 +214,10 @@
         let geocoder;
         let toAutocomplete;
 
+        // Add these global variables at the top of your script
+        let trackPolyline = null;
+        let trackCoordinates = [];
+
         // Add this map style definition
         const mapStyle = [
             {
@@ -397,6 +401,23 @@
                 );
                 totalDistance += distance / 1000; // Convert meters to kilometers
                 document.getElementById("distance-traveled").innerText = `Distance Traveled: ${totalDistance.toFixed(2)} km`;
+
+                // Add new coordinate to trackCoordinates
+                trackCoordinates.push(newOrigin);
+
+                // Update or create the trackPolyline
+                if (trackPolyline) {
+                    trackPolyline.setPath(trackCoordinates);
+                } else {
+                    trackPolyline = new google.maps.Polyline({
+                        path: trackCoordinates,
+                        geodesic: true,
+                        strokeColor: '#FF0000',
+                        strokeOpacity: 0.2,
+                        strokeWeight: 2
+                    });
+                    trackPolyline.setMap(map);
+                }
             }
 
             origin = newOrigin;
@@ -519,7 +540,6 @@
                             document.getElementById("route-info").innerHTML = `
                                 <p>Distance: ${distanceKm} km</p>
                                 <p>Estimated Time: ${durationMin} minutes</p>
-                                <p><strong>Note:</strong> Bicycle route not available. Showing driving route instead.</p>
                             `;
                         } else {
                             handleRouteError(status);
@@ -569,6 +589,17 @@
 
             landmarkMarkers.forEach((marker) => marker.setMap(null));
             landmarkMarkers = [];
+
+            clearTrackPolyline();
+        }
+
+        // Function to clear the tracking polyline
+        function clearTrackPolyline() {
+            if (trackPolyline) {
+                trackPolyline.setMap(null);
+                trackPolyline = null;
+            }
+            trackCoordinates = [];
         }
 
         // Function to generate routes to landmarks
