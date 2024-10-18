@@ -4,73 +4,204 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TrekTribe - Bicycle Track Course to Landmarks</title>
-    <!-- Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCqm58SgYCVN-CdOxefv0BPG_PTJ75yINM&libraries=places,geometry"></script>
-    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
+        @font-face {
+            font-family: 'SF Pro';
+            src: url('path-to-your-font/SF-Pro.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        body, html {
+            font-family: 'SF Pro', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Arial', sans-serif;
             margin: 0;
             padding: 0;
+            height: 100%;
             box-sizing: border-box;
-        }
-        header {
-            background-color: #03AC13;
-            color: white;
-            padding: 20px 0;
-            font-size: 2.5rem;
-            font-weight: bold;
+            background-color: #f4f4f4;
+            overflow: hidden;
         }
         #map-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: calc(100vh - 100px);
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 50px; /* Account for footer height */
+            z-index: 1;
         }
         #map {
             height: 100%;
             width: 100%;
-            max-width: 600px; /* One by one box */
-            max-height: 600px; /* One by one box */
         }
-        #controls {
-            margin: 20px 0;
+        #controls-container {
+            position: absolute;
+            bottom: 60px; /* Positioned from the bottom */
+            right: 10px;
+            width: 320px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 2;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+            opacity: 0;
+            visibility: hidden;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #controls-container.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        #toggle-controls {
+            position: absolute;
+            bottom: 60px; /* Positioned from the bottom */
+            right: 10px;
+            z-index: 3;
+            background-color: #03AC13;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            cursor: pointer;
         }
         button {
-            margin: 5px;
-            padding: 10px 15px;
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
             background-color: #03AC13;
             color: white;
             border: none;
             cursor: pointer;
             font-weight: bold;
+            font-size: 0.9rem;
         }
         button:hover {
             background-color: #02890e;
         }
         #distance-traveled {
             margin: 10px 0;
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: bold;
+        }
+        #location-inputs {
+            margin: 10px 0;
+        }
+        #location-inputs input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 5px;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: linear-gradient(to right, green, yellow, orange, red);
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .15s ease-in-out;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background-color: #fff;
+            border: 2px solid #000;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background-color: #fff;
+            border: 2px solid #000;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            color: #03AC13;
+            padding: 10px 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 4;
+        }
+
+        @media (min-width: 768px) {
+            #controls-container {
+                opacity: 1;
+                visibility: visible;
+            }
+            #toggle-controls {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
-    <header>TrekTribe</header>
-
-    <div id="controls">
-        <button id="set-location-btn">Set My Location Manually</button>
-        <button id="get-current-location-btn">Use My Current Location</button>
-        <button id="generate-btn" disabled>Generate Routes to Landmarks</button>
-        <button id="regenerate-btn" disabled>Regenerate Routes</button>
-        <div id="distance-traveled">Distance Traveled: 0 km</div>
-    </div>
-
     <div id="map-container">
         <div id="map"></div>
     </div>
     
+    <button id="toggle-controls">☰</button>
+
+    <div id="controls-container">
+        <div class="mb-2">
+            <label for="modeSelect" class="form-label">Mode</label>
+            <select class="form-select form-select-sm" id="modeSelect">
+                <option value="cyclist" selected>Cyclist</option>
+                <option value="runner">Runner</option>
+            </select>
+        </div>
+        
+        <div class="row mb-2">
+            <div class="col-6">
+                <button id="difficulty-toggle" class="btn btn-outline-dark btn-sm w-100">Difficulty Toggle Randomizer</button>
+            </div>
+            <div class="col-6">
+                <button id="generate-btn" class="btn btn-outline-dark btn-sm w-100" disabled>Regenerate Routes</button>
+            </div>
+        </div>
+        
+        <div class="mb-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <label for="difficultyRange" class="form-label mb-0">Difficulty Level</label>
+                <span id="difficultyKm" class="text-end">0 km</span>
+            </div>
+            <input type="range" class="form-range" id="difficultyRange" min="0" max="100" value="0">
+        </div>
+        
+        <div id="distance-traveled">Distance: 0 km</div>
+        
+        <div id="location-inputs">
+            <input type="text" id="to-location" placeholder="Enter destination" class="form-control form-control-sm mb-2">
+            <button id="show-route-btn" class="btn btn-primary btn-sm w-100">Show Route</button>
+        </div>
+        
+        <div id="route-info" class="mt-2 small"></div>
+        
+        <div class="d-grid mt-2">
+            <button id="setupButton" class="btn btn-outline-dark btn-sm w-100">Set New Direction <i class="fa fa-location-arrow" aria-hidden="true"></i></button>
+        </div>
+    </div>
+    
+    <footer>TrekTribe</footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let map;
         let origin = null;
@@ -80,22 +211,169 @@
         let landmarkMarkers = [];
         let originMarker = null;
         let totalDistance = 0;
+        let geocoder;
+        let toAutocomplete;
 
-        // Custom icon for origin marker
-        const originIcon = {
-            url: "https://upload.wikimedia.org/wikipedia/commons/9/99/Circle-icons-bike.svg", // Replace with your custom icon URL
-            scaledSize: new google.maps.Size(40, 40) // Scale the icon size (adjust as needed)
-        };
+        // Add this map style definition
+        const mapStyle = [
+            {
+                "elementType": "geometry",
+                "stylers": [
+                    {
+                        "color": "#e6f3ff"
+                    }
+                ]
+            },
+            {
+                "elementType": "labels.text.fill",
+                "stylers": [
+                    {
+                        "color": "#2c5a8c"
+                    }
+                ]
+            },
+            {
+                "elementType": "labels.text.stroke",
+                "stylers": [
+                    {
+                        "color": "#ffffff"
+                    }
+                ]
+            },
+            {
+                "featureType": "administrative",
+                "elementType": "geometry.stroke",
+                "stylers": [
+                    {
+                        "color": "#a6c9e6"
+                    }
+                ]
+            },
+            {
+                "featureType": "administrative.land_parcel",
+                "elementType": "geometry.stroke",
+                "stylers": [
+                    {
+                        "color": "#c8dbed"
+                    }
+                ]
+            },
+            {
+                "featureType": "landscape.natural",
+                "elementType": "geometry",
+                "stylers": [
+                    {
+                        "color": "#d1e6f7"
+                    }
+                ]
+            },
+            {
+                "featureType": "poi",
+                "elementType": "geometry",
+                "stylers": [
+                    {
+                        "color": "#b3d7f2"
+                    }
+                ]
+            },
+            {
+                "featureType": "road",
+                "elementType": "geometry",
+                "stylers": [
+                    {
+                        "color": "#ffffff"
+                    }
+                ]
+            },
+            {
+                "featureType": "road.arterial",
+                "elementType": "labels.text.fill",
+                "stylers": [
+                    {
+                        "color": "#4d7aa7"
+                    }
+                ]
+            },
+            {
+                "featureType": "road.highway",
+                "elementType": "geometry",
+                "stylers": [
+                    {
+                        "color": "#f0f7ff"
+                    }
+                ]
+            },
+            {
+                "featureType": "road.highway",
+                "elementType": "labels.text.fill",
+                "stylers": [
+                    {
+                        "color": "#2c5a8c"
+                    }
+                ]
+            },
+            {
+                "featureType": "water",
+                "elementType": "geometry.fill",
+                "stylers": [
+                    {
+                        "color": "#87cefa"
+                    }
+                ]
+            },
+            {
+                "featureType": "water",
+                "elementType": "labels.text.fill",
+                "stylers": [
+                    {
+                        "color": "#2c5a8c"
+                    }
+                ]
+            }
+        ];
 
         // Initialize the map
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
                 center: { lat: 14.5995, lng: 120.9842 }, // Default location in Manila
-                zoom: 12
+                zoom: 12,
+                styles: mapStyle // Apply the custom style
             });
 
             placesService = new google.maps.places.PlacesService(map);
             directionsService = new google.maps.DirectionsService();
+            geocoder = new google.maps.Geocoder();
+
+            // Automatically try to get user's location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        updateOriginMarker(position);
+                        startTrackingLocation();
+                        document.getElementById("generate-btn").disabled = false;
+                        document.getElementById("show-route-btn").disabled = false;
+                    },
+                    () => {
+                        console.log("Geolocation failed. Using default location.");
+                        placeOriginMarker({ lat: 14.5995, lng: 120.9842 });
+                    }
+                );
+            } else {
+                console.log("Geolocation is not supported by this browser. Using default location.");
+                placeOriginMarker({ lat: 14.5995, lng: 120.9842 });
+            }
+
+            // Initialize autocomplete for the "To Location" input field
+            toAutocomplete = new google.maps.places.Autocomplete(document.getElementById("to-location"));
+
+            // Add place_changed event listener for the input
+            toAutocomplete.addListener('place_changed', function() {
+                const place = toAutocomplete.getPlace();
+                if (!place.geometry) {
+                    alert("No details available for input: '" + place.name + "'");
+                    return;
+                }
+            });
         }
 
         // Function to update the origin marker position
@@ -116,18 +394,20 @@
             }
 
             origin = newOrigin;
+            placeOriginMarker(origin);
+        }
 
+        // Function to place the origin marker
+        function placeOriginMarker(position) {
             if (originMarker) {
-                originMarker.setPosition(newOrigin);
-            } else {
-                originMarker = new google.maps.Marker({
-                    position: newOrigin,
-                    map: map,
-                    title: "Current Location",
-                    icon: originIcon
-                });
+                originMarker.setMap(null);
             }
-            map.setCenter(newOrigin);
+            originMarker = new google.maps.Marker({
+                position: position,
+                map: map,
+                title: "Current Location"
+            });
+            map.setCenter(position);
         }
 
         // Function to start tracking the user's location
@@ -138,111 +418,133 @@
                         updateOriginMarker(position);
                     },
                     () => {
-                        alert("Geolocation failed. Please set your location manually.");
+                        console.log("Geolocation tracking failed.");
                     }
                 );
             } else {
-                alert("Geolocation is not supported by this browser. Please set your location manually.");
+                console.log("Geolocation is not supported by this browser.");
             }
         }
 
-        // Set user's location manually using a click on the map
-        function setLocationManually() {
-            map.addListener("click", (event) => {
-                if (originMarker) {
-                    originMarker.setMap(null); // Remove the previous origin marker
+        // Function to show route based on user's location and input destination
+        function showRoute() {
+            const toPlace = toAutocomplete.getPlace();
+
+            if (!origin) {
+                alert("Your current location is not available. Please try again.");
+                return;
+            }
+
+            if (!toPlace || !toPlace.geometry) {
+                alert("Please select a valid destination from the suggestions.");
+                return;
+            }
+
+            const toLatLng = toPlace.geometry.location;
+
+            const request = {
+                origin: origin,
+                destination: toLatLng,
+                travelMode: google.maps.TravelMode.BICYCLING,
+            };
+
+            clearRoutesAndMarkers();
+
+            directionsService.route(request, (result, status) => {
+                if (status === google.maps.DirectionsStatus.OK) {
+                    const directionsRenderer = new google.maps.DirectionsRenderer({
+                        map: map,
+                        directions: result,
+                        polylineOptions: {
+                            strokeColor: "blue",
+                            strokeWeight: 4,
+                            strokeOpacity: 1.0,
+                        },
+                    });
+                    directionsRenderers.push(directionsRenderer);
+
+                    // Calculate and display route information
+                    const route = result.routes[0];
+                    let distance = 0;
+                    let duration = 0;
+                    for (let i = 0; i < route.legs.length; i++) {
+                        distance += route.legs[i].distance.value;
+                        duration += route.legs[i].duration.value;
+                    }
+                    const distanceKm = (distance / 1000).toFixed(2);
+                    const durationMin = Math.round(duration / 60);
+
+                    document.getElementById("route-info").innerHTML = `
+                        <p>Distance: ${distanceKm} km</p>
+                        <p>Estimated Time: ${durationMin} minutes</p>
+                    `;
+                } else {
+                    alert("Could not display route. Please try again.");
                 }
-                origin = {
-                    lat: event.latLng.lat(),
-                    lng: event.latLng.lng(),
-                };
-                originMarker = new google.maps.Marker({
-                    position: origin,
-                    map: map,
-                    title: "Manually Set Location",
-                    icon: originIcon
-                });
-                document.getElementById("generate-btn").disabled = false;
-                document.getElementById("regenerate-btn").disabled = false;
             });
-        }
-
-        // Use user's current location to set origin and start tracking
-        function getCurrentLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        updateOriginMarker(position);
-                        startTrackingLocation(); // Start tracking location
-                        document.getElementById("generate-btn").disabled = false;
-                        document.getElementById("regenerate-btn").disabled = false;
-                    },
-                    () => {
-                        alert("Geolocation failed. Please set your location manually.");
-                    }
-                );
-            } else {
-                alert("Geolocation is not supported by this browser. Please set your location manually.");
-            }
         }
 
         // Function to clear previous routes and markers
         function clearRoutesAndMarkers() {
-            // Clear routes
             directionsRenderers.forEach((renderer) => renderer.setMap(null));
             directionsRenderers = [];
 
-            // Clear markers
             landmarkMarkers.forEach((marker) => marker.setMap(null));
             landmarkMarkers = [];
         }
 
-        // Function to find nearby landmarks and generate routes
+        // Function to generate routes to landmarks
         function generateRoutesToLandmarks() {
             if (!origin) {
                 alert("Please set your location first.");
                 return;
             }
 
-            clearRoutesAndMarkers(); // Clear any existing routes and markers
+            clearRoutesAndMarkers();
 
-            // Use Google Places API to find landmarks nearby
+            const difficultyRange = document.getElementById('difficultyRange').value;
+            const searchRadius = Math.max(difficultyRange * 1000, 3000); // Convert km to meters, minimum 3km
+
             const request = {
                 location: origin,
-                radius: 20000, // Search within 20 km radius
-                type: ["tourist_attraction", "point_of_interest"], // Looking for good landmarks
+                radius: searchRadius,
+                type: ["tourist_attraction", "point_of_interest"],
             };
 
             placesService.nearbySearch(request, (results, status) => {
                 if (status === google.maps.places.PlacesServiceStatus.OK) {
-                    let landmarks = getRandomLandmarks(results, 5); // Get up to 5 random landmarks
-                    landmarks.forEach(drawRouteToLandmark);
+                    const filteredResults = results.filter(place => {
+                        const distance = google.maps.geometry.spherical.computeDistanceBetween(
+                            new google.maps.LatLng(origin.lat, origin.lng),
+                            place.geometry.location
+                        );
+                        return distance <= difficultyRange * 1000; // Convert km to meters
+                    });
+
+                    if (filteredResults.length > 0) {
+                        let landmarks = getRandomLandmarks(filteredResults, 5);
+                        landmarks.forEach(drawRouteToLandmark);
+                    } else {
+                        alert("No landmarks found within the specified difficulty range.");
+                    }
                 } else {
                     alert("No landmarks found nearby.");
                 }
             });
         }
 
-        // Function to draw routes to a specific landmark using Directions API
+        // Function to draw route to a landmark
         function drawRouteToLandmark(landmark) {
-            const destination = {
-                lat: landmark.geometry.location.lat(),
-                lng: landmark.geometry.location.lng(),
-            };
+            const destination = landmark.geometry.location;
 
             const distance = google.maps.geometry.spherical.computeDistanceBetween(
                 new google.maps.LatLng(origin.lat, origin.lng),
-                new google.maps.LatLng(destination.lat, destination.lng)
+                destination
             );
 
-            let color;
-            if (distance <= 4500) {
-                color = "green"; // Green for short distances (<= 5 km)
-            } else if (distance <= 5000) {
-                color = "orange"; // Orange for medium distances (5 - 10 km)
-            } else {
-                color = "red"; // Red for long distances (> 10 km)
-            }
+            const difficultyRange = document.getElementById('difficultyRange').value * 1000; // Convert km to meters
+            let color = distance <= difficultyRange * 0.33 ? "green" : 
+                        (distance <= difficultyRange * 0.66 ? "orange" : "red");
 
             const request = {
                 origin: origin,
@@ -250,7 +552,6 @@
                 travelMode: google.maps.TravelMode.BICYCLING,
             };
 
-            // Request for a route
             directionsService.route(request, (result, status) => {
                 if (status === google.maps.DirectionsStatus.OK) {
                     const directionsRenderer = new google.maps.DirectionsRenderer({
@@ -261,11 +562,10 @@
                             strokeWeight: 4,
                             strokeOpacity: 1.0,
                         },
-                        suppressMarkers: true, // Suppress default markers to add custom ones
+                        suppressMarkers: true,
                     });
                     directionsRenderers.push(directionsRenderer);
 
-                    // Add a marker for the destination
                     const landmarkMarker = new google.maps.Marker({
                         position: destination,
                         map: map,
@@ -273,7 +573,6 @@
                     });
                     landmarkMarkers.push(landmarkMarker);
                 } else if (status === google.maps.DirectionsStatus.ZERO_RESULTS) {
-                    // If bicycling mode fails, fall back to driving mode
                     request.travelMode = google.maps.TravelMode.DRIVING;
                     directionsService.route(request, (result, status) => {
                         if (status === google.maps.DirectionsStatus.OK) {
@@ -289,7 +588,6 @@
                             });
                             directionsRenderers.push(directionsRenderer);
 
-                            // Add a marker for the destination
                             const landmarkMarker = new google.maps.Marker({
                                 position: destination,
                                 map: map,
@@ -323,13 +621,115 @@
         }
 
         // Attach event listeners to buttons
-        document.getElementById("set-location-btn").addEventListener("click", setLocationManually);
-        document.getElementById("get-current-location-btn").addEventListener("click", getCurrentLocation);
         document.getElementById("generate-btn").addEventListener("click", generateRoutesToLandmarks);
-        document.getElementById("regenerate-btn").addEventListener("click", generateRoutesToLandmarks);
+        document.getElementById("show-route-btn").addEventListener("click", showRoute);
 
         // Initialize the map when the page loads
         window.onload = initMap;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const slider = document.getElementById('difficultyRange');
+            const difficultyToggle = document.getElementById('difficulty-toggle');
+            const difficultyKm = document.getElementById('difficultyKm');
+
+            function updateSliderBackground() {
+                const value = slider.value;
+                const min = slider.min || 0;
+                const max = slider.max || 100;
+                const percentage = ((value - min) / (max - min)) * 100;
+                slider.style.background = `linear-gradient(to right, green ${percentage}%, #ddd ${percentage}%)`;
+                
+                // Update the km display
+                const km = value; // Now the value directly represents km
+                difficultyKm.textContent = `${km} km`;
+            }
+
+            // Use 'input' event for smoother updates
+            slider.addEventListener('input', updateSliderBackground);
+
+            // Throttle function to limit how often updateSliderBackground is called
+            function throttle(func, limit) {
+                let inThrottle;
+                return function() {
+                    const args = arguments;
+                    const context = this;
+                    if (!inThrottle) {
+                        func.apply(context, args);
+                        inThrottle = true;
+                        setTimeout(() => inThrottle = false, limit);
+                    }
+                }
+            }
+
+            // Apply throttling to updateSliderBackground
+            const throttledUpdateSliderBackground = throttle(updateSliderBackground, 16); // 60fps
+
+            slider.addEventListener('input', throttledUpdateSliderBackground);
+
+            // Initialize on page load
+            updateSliderBackground();
+
+            // Implement randomizer functionality
+            difficultyToggle.addEventListener('click', function() {
+                const randomValue = Math.floor(Math.random() * 101); // 0 to 100
+                slider.value = randomValue;
+                updateSliderBackground();
+                console.log('Difficulty randomized to:', randomValue);
+            });
+
+            const setupButton = document.getElementById('setupButton');
+            const locationInputs = document.getElementById('location-inputs');
+            let isSearchMode = false;
+
+            setupButton.addEventListener('click', function() {
+                if (!isSearchMode) {
+                    // Transform button into search box
+                    setupButton.style.display = 'none';
+                    locationInputs.style.display = 'block';
+                    document.getElementById('to-location').focus();
+                    isSearchMode = true;
+                }
+            });
+
+            document.getElementById('show-route-btn').addEventListener('click', function() {
+                showRoute();
+                // Reset the UI after showing the route
+                setupButton.style.display = 'block';
+                locationInputs.style.display = 'none';
+                isSearchMode = false;
+            });
+
+            // Add event listener for the difficulty toggle button
+            document.getElementById('difficulty-toggle').addEventListener('click', function() {
+                // Implement the difficulty toggle randomizer functionality here
+                console.log('Difficulty Toggle Randomizer clicked');
+            });
+
+            // Update the mode selection
+            document.getElementById('modeSelect').addEventListener('change', function() {
+                const selectedMode = this.value;
+                console.log('Selected mode:', selectedMode);
+                // Implement mode change functionality here
+            });
+
+            // Add this new code for the toggle functionality
+            const toggleButton = document.getElementById('toggle-controls');
+            const controlsContainer = document.getElementById('controls-container');
+
+            toggleButton.addEventListener('click', function() {
+                controlsContainer.classList.toggle('active');
+            });
+
+            // Close controls when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!controlsContainer.contains(event.target) && event.target !== toggleButton) {
+                    controlsContainer.classList.remove('active');
+                }
+            });
+        });
     </script>
+
+    <!-- Google Maps API -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCqm58SgYCVN-CdOxefv0BPG_PTJ75yINM&libraries=places,geometry&callback=initMap"></script>
 </body>
 </html>
