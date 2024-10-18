@@ -187,7 +187,7 @@
         
         <div id="distance-traveled">Distance: 0 km</div>
         
-        <div id="location-inputs">
+        <div id="location-inputs" style="display: none;">
             <input type="text" id="to-location" placeholder="Enter destination" class="form-control form-control-sm mb-2">
             <button id="show-route-btn" class="btn btn-primary btn-sm w-100">Show Route</button>
         </div>
@@ -334,11 +334,17 @@
 
         // Initialize the map
         function initMap() {
-            map = new google.maps.Map(document.getElementById("map"), {
+            const mapOptions = {
                 center: { lat: 14.5995, lng: 120.9842 }, // Default location in Manila
                 zoom: 12,
-                styles: mapStyle // Apply the custom style
-            });
+                styles: mapStyle, // Apply the custom style
+                mapTypeControl: false, // Remove Maps/Satellite toggle
+                zoomControl: false, // Remove zoom controls
+                streetViewControl: false, // Optionally remove Street View control
+                fullscreenControl: false // Optionally remove fullscreen control
+            };
+
+            map = new google.maps.Map(document.getElementById("map"), mapOptions);
 
             placesService = new google.maps.places.PlacesService(map);
             directionsService = new google.maps.DirectionsService();
@@ -402,10 +408,18 @@
             if (originMarker) {
                 originMarker.setMap(null);
             }
+            
+            const bikeIcon = {
+                url: 'bikeOrigin.svg',
+                scaledSize: new google.maps.Size(40, 40), // Adjust size as needed
+                anchor: new google.maps.Point(20, 20) // Center the icon
+            };
+
             originMarker = new google.maps.Marker({
                 position: position,
                 map: map,
-                title: "Current Location"
+                title: "Current Location",
+                icon: bikeIcon
             });
             map.setCenter(position);
         }
@@ -428,23 +442,21 @@
 
         // Function to show route based on user's location and input destination
         function showRoute() {
-            const toPlace = toAutocomplete.getPlace();
+            const toLocation = document.getElementById('to-location').value;
 
             if (!origin) {
                 alert("Your current location is not available. Please try again.");
                 return;
             }
 
-            if (!toPlace || !toPlace.geometry) {
-                alert("Please select a valid destination from the suggestions.");
+            if (!toLocation) {
+                alert("Please enter a valid destination.");
                 return;
             }
 
-            const toLatLng = toPlace.geometry.location;
-
             const request = {
                 origin: origin,
-                destination: toLatLng,
+                destination: toLocation,
                 travelMode: google.maps.TravelMode.BICYCLING,
             };
 
@@ -478,10 +490,76 @@
                         <p>Distance: ${distanceKm} km</p>
                         <p>Estimated Time: ${durationMin} minutes</p>
                     `;
+                } else if (status === google.maps.DirectionsStatus.ZERO_RESULTS) {
+                    // Try with DRIVING mode if BICYCLING fails
+                    request.travelMode = google.maps.TravelMode.DRIVING;
+                    directionsService.route(request, (result, status) => {
+                        if (status === google.maps.DirectionsStatus.OK) {
+                            const directionsRenderer = new google.maps.DirectionsRenderer({
+                                map: map,
+                                directions: result,
+                                polylineOptions: {
+                                    strokeColor: "blue",
+                                    strokeWeight: 4,
+                                    strokeOpacity: 1.0,
+                                },
+                            });
+                            directionsRenderers.push(directionsRenderer);
+
+                            const route = result.routes[0];
+                            let distance = 0;
+                            let duration = 0;
+                            for (let i = 0; i < route.legs.length; i++) {
+                                distance += route.legs[i].distance.value;
+                                duration += route.legs[i].duration.value;
+                            }
+                            const distanceKm = (distance / 1000).toFixed(2);
+                            const durationMin = Math.round(duration / 60);
+
+                            document.getElementById("route-info").innerHTML = `
+                                <p>Distance: ${distanceKm} km</p>
+                                <p>Estimated Time: ${durationMin} minutes</p>
+                                <p><strong>Note:</strong> Bicycle route not available. Showing driving route instead.</p>
+                            `;
+                        } else {
+                            handleRouteError(status);
+                        }
+                    });
                 } else {
-                    alert("Could not display route. Please try again.");
+                    handleRouteError(status);
                 }
             });
+        }
+
+        function handleRouteError(status) {
+            let errorMessage = "Could not display route. ";
+            switch(status) {
+                case google.maps.DirectionsStatus.NOT_FOUND:
+                    errorMessage += "At least one of the locations specified in the request's origin, destination, or waypoints could not be geocoded.";
+                    break;
+                case google.maps.DirectionsStatus.ZERO_RESULTS:
+                    errorMessage += "No route could be found between the origin and destination.";
+                    break;
+                case google.maps.DirectionsStatus.MAX_WAYPOINTS_EXCEEDED:
+                    errorMessage += "Too many waypoints were provided in the request.";
+                    break;
+                case google.maps.DirectionsStatus.INVALID_REQUEST:
+                    errorMessage += "The provided request was invalid.";
+                    break;
+                case google.maps.DirectionsStatus.OVER_QUERY_LIMIT:
+                    errorMessage += "The webpage has sent too many requests within the allowed time period.";
+                    break;
+                case google.maps.DirectionsStatus.REQUEST_DENIED:
+                    errorMessage += "The webpage is not allowed to use the directions service.";
+                    break;
+                case google.maps.DirectionsStatus.UNKNOWN_ERROR:
+                    errorMessage += "A directions request could not be processed due to a server error. Please try again.";
+                    break;
+                default:
+                    errorMessage += "An unknown error occurred.";
+            }
+            console.error("Directions request failed. Status:", status);
+            alert(errorMessage);
         }
 
         // Function to clear previous routes and markers
@@ -679,24 +757,25 @@
 
             const setupButton = document.getElementById('setupButton');
             const locationInputs = document.getElementById('location-inputs');
-            let isSearchMode = false;
+            const toLocationInput = document.getElementById('to-location');
+            const showRouteBtn = document.getElementById('show-route-btn');
 
             setupButton.addEventListener('click', function() {
-                if (!isSearchMode) {
-                    // Transform button into search box
-                    setupButton.style.display = 'none';
-                    locationInputs.style.display = 'block';
-                    document.getElementById('to-location').focus();
-                    isSearchMode = true;
-                }
+                setupButton.style.display = 'none';
+                locationInputs.style.display = 'block';
+                toLocationInput.focus();
             });
 
-            document.getElementById('show-route-btn').addEventListener('click', function() {
-                showRoute();
-                // Reset the UI after showing the route
-                setupButton.style.display = 'block';
-                locationInputs.style.display = 'none';
-                isSearchMode = false;
+            showRouteBtn.addEventListener('click', function() {
+                if (toLocationInput.value.trim() !== '') {
+                    showRoute();
+                    // Reset the UI after showing the route
+                    setupButton.style.display = 'block';
+                    locationInputs.style.display = 'none';
+                    toLocationInput.value = ''; // Clear the input
+                } else {
+                    alert('Please enter a destination.');
+                }
             });
 
             // Add event listener for the difficulty toggle button
