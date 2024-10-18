@@ -631,8 +631,9 @@
                     });
 
                     if (filteredResults.length > 0) {
-                        let landmarks = getRandomLandmarks(filteredResults, 5);
-                        landmarks.forEach(drawRouteToLandmark);
+                        // Change here to get only one landmark
+                        let landmark = filteredResults[Math.floor(Math.random() * filteredResults.length)];
+                        drawRouteToLandmark(landmark);
                     } else {
                         alert("No landmarks found within the specified difficulty range.");
                     }
@@ -744,7 +745,7 @@
             function updateSliderBackground() {
                 const value = slider.value;
                 const min = slider.min || 0;
-                const max = slider.max || 100;
+                const max = slider.max || 1000;
                 const percentage = ((value - min) / (max - min)) * 100;
                 slider.style.background = `linear-gradient(to right, green ${percentage}%, #ddd ${percentage}%)`;
                 
